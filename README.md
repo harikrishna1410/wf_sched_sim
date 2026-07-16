@@ -18,10 +18,6 @@ uv pip install -e .
 
 ```
 .
-├── correlation_analysis/ # Stage-to-stage runtime correlation analysis tool
-│   ├── log_scraper.py   # Script to extract stage runtimes from logs
-│   ├── plot_correlations.py # Core analysis and plotting script
-│   └── README.md        # Correlation tool documentation
 ├── examples/            # Configuration templates
 │   ├── 3_stages.toml    # Standard A->B->C config running to completion
 │   └── 5_stages.toml    # 5-stage ABCDE config with a fixed walltime limit
