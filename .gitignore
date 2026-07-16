@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE / editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Linting and testing caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Project-specific output artifacts (plots and scraper outputs)
+*.png
+correlation_analysis/*.png
+correlation_analysis/actual_runtimes.txt

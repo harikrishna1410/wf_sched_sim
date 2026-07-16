@@ -1,0 +1,51 @@
+# 5-Stage Pipeline Configuration (ABCDE)
+# Expected step runtimes (for expected K = 15 events):
+#   A: 2.0s + 15 * 0.5333s = 10.0 seconds
+#   B: 2.0s + 15 * 2.0000s = 32.0 seconds
+#   C: 1.0s + 15 * 0.8000s = 13.0 seconds
+#   D: 1.0s + 15 * 1.2000s = 19.0 seconds
+#   E: 0.5s + 15 * 0.3000s = 5.0 seconds
+# Total Pipeline Expected Work: 79.0 seconds
+# Theoretical Min Makespan for 100,000 copies and 25,600 workers: ~308.6 seconds
+
+[simulation]
+num_copies = 100000
+num_workers = 25600
+seed = 42
+# Set to 320.0s to simulate a strict HPC walltime limit.
+# Any tasks running past 320.0s will be terminated, causing occupancy to suffer.
+walltime_limit = 320.0
+
+[workload]
+lambda_val = 15.0
+stage_order = ['A', 'B', 'C', 'D', 'E']
+
+[stages.A]
+base_mean = 2.0
+per_event_mean = 0.5333
+per_event_std = 0.1
+noise_std = 0.5
+
+[stages.B]
+base_mean = 2.0
+per_event_mean = 2.0
+per_event_std = 0.5
+noise_std = 0.5
+
+[stages.C]
+base_mean = 1.0
+per_event_mean = 0.8
+per_event_std = 0.2
+noise_std = 0.2
+
+[stages.D]
+base_mean = 1.0
+per_event_mean = 1.2
+per_event_std = 0.3
+noise_std = 0.3
+
+[stages.E]
+base_mean = 0.5
+per_event_mean = 0.3
+per_event_std = 0.1
+noise_std = 0.1

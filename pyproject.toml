@@ -1,0 +1,19 @@
+[project]
+name = "wf_sched_sim"
+version = "0.1.0"
+description = "HPC Workflow Scheduling Simulator for stochastic tasks and arbitrary stages"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.20.0",
+    "matplotlib>=3.4.0",
+    "toml>=0.10.2"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+wf-dashboard = "wf_sched_sim.examples.run_dashboard:main"
+wf-timeline = "wf_sched_sim.examples.run_timeline:main"

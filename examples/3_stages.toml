@@ -1,0 +1,35 @@
+# 3-Stage Pipeline Configuration (ABC)
+# Expected step runtimes (for expected K = 15 events):
+#   A: 2.0s + 15 * 0.5333s = 10.0 seconds
+#   B: 2.0s + 15 * 4.0000s = 62.0 seconds
+#   C: 1.0s + 15 * 0.8000s = 13.0 seconds
+
+[simulation]
+num_copies = 100000
+num_workers = 25600
+seed = 42
+# Set walltime_limit to "None" to run until completion (so stragglers finish)
+# Or set to a number (e.g. 375.0) to truncate tasks and observe occupancy loss
+walltime_limit = "None"
+
+[workload]
+lambda_val = 15.0
+stage_order = ['A', 'B', 'C']
+
+[stages.A]
+base_mean = 2.0
+per_event_mean = 0.5333
+per_event_std = 0.1
+noise_std = 0.5
+
+[stages.B]
+base_mean = 2.0
+per_event_mean = 4.0
+per_event_std = 1.0
+noise_std = 0.5
+
+[stages.C]
+base_mean = 1.0
+per_event_mean = 0.8
+per_event_std = 0.2
+noise_std = 0.2
