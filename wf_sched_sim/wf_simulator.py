@@ -1,4 +1,5 @@
 import heapq
+from collections import deque
 from .workflow import WorkflowModel, WorkflowTask
 from .system import SystemModel
 from .mapper import Mapper
@@ -14,12 +15,12 @@ class Simulator:
 
     def run(self):
         event_queue = []
-        waiting = []
+        waiting = deque()
         completed_count = 0
         current_time = 0.0
 
         ready = self._workflow_model.ready_tasks()
-        self._schedule_initial(ready, waiting, event_queue, current_time)
+        waiting = self._schedule_initial(ready, waiting, event_queue, current_time)
 
         while event_queue:
             current_time, wf_name, task, slot = heapq.heappop(event_queue)
@@ -29,7 +30,7 @@ class Simulator:
             self._workflow_model.mark_completed({wf_name: [task.name]}, {wf_name: [current_time]})
 
             new_ready = self._workflow_model.ready_tasks([wf_name])
-            self._schedule(new_ready, waiting, event_queue, current_time)
+            waiting = self._schedule(new_ready, waiting, event_queue, current_time)
 
         return {
             "makespan": current_time,
@@ -41,34 +42,28 @@ class Simulator:
     def _schedule_initial(self, ready, waiting, event_queue, current_time):
         all_tasks = []
         for wf_name, tasks in ready.items():
-            for task in tasks:
-                all_tasks.append((wf_name, task))
+            all_tasks.extend(tasks)
         if not all_tasks:
-            return
-        all_tasks = self._orderer.order(all_tasks)
-        self._assign(all_tasks, waiting, event_queue, current_time)
+            return waiting
+        all_tasks = self._orderer.order(all_tasks, self._workflow_model, self._system)
+        waiting.extend(all_tasks)
+        return self._assign(waiting, event_queue, current_time)
 
     def _schedule(self, new_ready, waiting, event_queue, current_time):
         for wf_name, tasks in new_ready.items():
             for task in tasks:
-                self._orderer.insert(waiting, (wf_name, task))
+                self._orderer.insert(waiting, task, self._workflow_model, self._system)
 
-        free = self._system.free_slots
-        if free == 0 or not waiting:
-            return
-        to_schedule = waiting[:free]
-        del waiting[:free]
-        self._assign(to_schedule, waiting, event_queue, current_time)
+        if self._system.free_slots == 0 or not waiting:
+            return waiting
 
-    def _assign(self, to_schedule, waiting, event_queue, current_time):
-        task_objs = [t[1] for t in to_schedule]
-        slots = self._mapper.map(task_objs, self._workflow_model, self._system)
-        for (wf_name, task), slot in zip(to_schedule, slots):
-            if slot is None:
-                self._orderer.insert(waiting, (wf_name, task))
-                continue
-            slot_name = slot[0]
-            compute = self._system.get_compute(slot_name)
+        return self._assign(waiting, event_queue, current_time)
+
+    def _assign(self, waiting, event_queue, current_time):
+        allocated, unallocated = self._mapper.map(waiting, self._workflow_model, self._system)
+        for task, slot in allocated:
+            compute = self._system.get_compute(slot[0])
             task.start_time = max(task.start_time, current_time)
             completion_time = task.start_time + task.compute_cost / compute
-            heapq.heappush(event_queue, (completion_time, wf_name, task, slot))
+            heapq.heappush(event_queue, (completion_time, task.workflow.name, task, slot))
+        return unallocated

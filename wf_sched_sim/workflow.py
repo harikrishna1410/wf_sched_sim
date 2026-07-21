@@ -1,3 +1,4 @@
+from collections import deque
 from dataclasses import dataclass
 
 _DONE_SENTINAL = b"done"
@@ -9,6 +10,7 @@ class WorkflowTask:
     compute_cost: float
     comm_size: float
     nslots: dict
+    workflow: "Workflow" = None
     start_time: float = 0.0
     stop_time: float = 0.0
 
@@ -28,10 +30,19 @@ class Workflow:
         return self._name
 
     @property
+    def tasks(self):
+        return self._tasks
+
+    @property
+    def total_cost(self):
+        return sum(t.compute_cost for t in self._tasks.values())
+
+    @property
     def done(self):
         return len(self._unfinished) == 0
 
     def add_task(self, task: WorkflowTask):
+        task.workflow = self
         self._tasks[task.name] = task
         self._successors[task.name] = []
         self._predecessors[task.name] = []
@@ -76,11 +87,15 @@ class Workflow:
 class WorkflowModel:
     def __init__(self, workflows: list[Workflow]):
         self._workflows: dict[str, Workflow] = {}
-        self._output_queues = {w.name: [] for w in workflows}
+        self._output_queues = {w.name: deque() for w in workflows}
         for w in workflows:
             w.set_output_queue(self._output_queues[w.name])
             self._workflows[w.name] = w
         self._unfinished = set(self._workflows.keys())
+
+    @property
+    def workflows(self):
+        return self._workflows
 
     @property
     def done(self):

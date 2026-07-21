@@ -65,6 +65,14 @@ class SystemModel:
     def free_slots(self):
         return self._free_slots
 
+    @property
+    def compute_slot_counts(self):
+        return self._compute_node.compute_slot_counts
+
+    def is_slot_free(self, slot_name, node_id, slot_id):
+        sid = self._slot_name_to_id[slot_name]
+        return not self._allocated_flag[sid, node_id, slot_id]
+
     def get_lowest_inv_bandwidth(self, src: tuple[str, str], dest: tuple[str, str]):
         """Returns 1/bandwidth_i between two compute nodes.
         If a direct edge doesn't exist, returns the path with shortest sum(1/inv_bandwidth) along the path.
@@ -98,104 +106,89 @@ class SystemModel:
     def get_compute(self, slot_name: str):
         return self._compute_node.compute_slots[slot_name]
 
-    def allocate(
-        self, addresses: list[None | str | tuple[str, int] | tuple[str, int, int]]
-    ) -> list[tuple[str, int, int] | None]:
-        ret = []
-        for address in addresses:
-            if self._free_slots == 0:
-                ret.append(None)
-                continue
-            if address is None:
-                ## Allocates the firt available slot
-                if np.amin(self._allocated_flag):
-                    ret.append(None)
-                else:
-                    allocated_slot_id, allocated_node, allocated_slot = (
-                        np.unravel_index(
-                            np.argmin(self._allocated_flag),
-                            shape=self._allocated_flag.shape,
-                        )
-                    )
-                    self._allocated_flag[
-                        allocated_slot_id, allocated_node, allocated_slot
-                    ] = True
-                    self._free_slots -= 1
-                    ret.append(
-                        (
-                            self._slot_id_to_name[allocated_slot_id],
-                            int(allocated_node),
-                            int(allocated_slot),
-                        )
-                    )
-            ## If its a str, its the slot name
-            elif isinstance(address, str):
-                slot_name = address
-                slot_id = self._slot_name_to_id[slot_name]
-                shape = self._allocated_flag.shape
+    def _try_allocate(self, address):
+        if self._free_slots == 0:
+            return None
+        if address is None:
+            if np.amin(self._allocated_flag):
+                return None
+            allocated_slot_id, allocated_node, allocated_slot = (
+                np.unravel_index(
+                    np.argmin(self._allocated_flag),
+                    shape=self._allocated_flag.shape,
+                )
+            )
+            self._allocated_flag[
+                allocated_slot_id, allocated_node, allocated_slot
+            ] = True
+            self._free_slots -= 1
+            return (
+                self._slot_id_to_name[allocated_slot_id],
+                int(allocated_node),
+                int(allocated_slot),
+            )
+        elif isinstance(address, str):
+            slot_name = address
+            slot_id = self._slot_name_to_id[slot_name]
+            shape = self._allocated_flag.shape
+            if np.amin(self._allocated_flag[slot_id, :, :]):
+                return None
+            allocated_node, allocated_slot = np.unravel_index(
+                np.argmin(self._allocated_flag[slot_id, :, :]),
+                shape=shape[1:],
+            )
+            self._allocated_flag[slot_id, allocated_node, allocated_slot] = True
+            self._free_slots -= 1
+            return (slot_name, int(allocated_node), int(allocated_slot))
+        elif isinstance(address, tuple) and len(address) == 2:
+            slot_name = address[0]
+            slot_id = self._slot_name_to_id[slot_name]
+            node_id = address[1]
+            if np.amin(
+                self._allocated_flag[
+                    slot_id,
+                    node_id,
+                    : self._compute_node.compute_slot_counts[slot_name],
+                ]
+            ):
+                return None
+            allocated_slot = np.argmin(
+                self._allocated_flag[
+                    slot_id,
+                    node_id,
+                    : self._compute_node.compute_slot_counts[slot_name],
+                ]
+            )
+            self._allocated_flag[slot_id, node_id, allocated_slot] = True
+            self._free_slots -= 1
+            return (slot_name, int(node_id), int(allocated_slot))
+        elif isinstance(address, tuple) and len(address) == 3:
+            slot_name = address[0]
+            slot_id = self._slot_name_to_id[slot_name]
+            node_id = address[1]
+            slot = address[2]
+            if self._allocated_flag[slot_id, node_id, slot]:
+                return None
+            self._allocated_flag[slot_id, node_id, slot] = True
+            self._free_slots -= 1
+            return (slot_name, node_id, slot)
+        else:
+            raise ValueError("Unknow address type in allocate!")
 
-                if np.amin(
-                    self._allocated_flag[
-                        slot_id,
-                        :,
-                        :,
-                    ]
-                ):
-                    # No free slots exist
-                    ret.append(None)
-                else:
-                    # free slot exists
-                    allocated_node, allocated_slot = np.unravel_index(
-                        np.argmin(
-                            self._allocated_flag[
-                                slot_id,
-                                :,
-                                :,
-                            ]
-                        ),
-                        shape=shape[1:],
-                    )
-                    self._allocated_flag[slot_id, allocated_node, allocated_slot] = True
-                    self._free_slots -= 1
-                    ret.append((slot_name, int(allocated_node), int(allocated_slot)))
-            elif isinstance(address, tuple) and len(address) == 2:
-                slot_name = address[0]
-                slot_id = self._slot_name_to_id[slot_name]
-                node_id = address[1]
-                if not np.amin(
-                    self._allocated_flag[
-                        slot_id,
-                        node_id,
-                        : self._compute_node.compute_slot_counts[slot_name],
-                    ]
-                ):
-                    ## free slot exists
-                    allocated_slot = np.argmin(
-                        self._allocated_flag[
-                            slot_id,
-                            node_id,
-                            : self._compute_node.compute_slot_counts[slot_name],
-                        ]
-                    )
-                    self._allocated_flag[slot_id, node_id, allocated_slot] = True
-                    self._free_slots -= 1
-                    ret.append((slot_name, int(node_id), int(allocated_slot)))
-                else:
-                    ret.append(None)
-            elif isinstance(address, tuple) and len(address) == 3:
-                slot_name = address[0]
-                slot_id = self._slot_name_to_id[slot_name]
-                node_id = address[1]
-                slot = address[2]
-                if self._allocated_flag[slot_id, node_id, slot]:
-                    ret.append(None)
-                else:
-                    self._allocated_flag[slot_id, node_id, slot] = True
-                    self._free_slots -= 1
-                    ret.append((slot_name, node_id, slot))
+    def allocate(self, tasks, addresses):
+        from collections import deque
+        allocated = deque()
+        unallocated = deque()
+        for task, address in zip(tasks, addresses):
+            if self._free_slots == 0:
+                unallocated.append(task)
+                continue
+            slot = self._try_allocate(address)
+            if slot is None:
+                unallocated.append(task)
             else:
-                raise ValueError("Unknow address type in allocate!")
-        return ret
+                allocated.append((task, slot))
+        return allocated, unallocated
 
     def deallocate(self, addresses: list[tuple[str, int, int]]):
         for address in addresses:
