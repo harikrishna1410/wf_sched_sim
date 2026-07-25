@@ -1,8 +1,7 @@
-from abc import ABC
-from abc import abstractmethod
-from .workflow import WorkflowModel
-from .workflow import WorkflowTask
+from abc import ABC, abstractmethod
+
 from .system import SystemModel
+from .workflow import WorkflowModel, WorkflowTask
 
 
 class Mapper(ABC):
@@ -37,13 +36,15 @@ class SortedPipelineMapper(Mapper):
         if self._wf_to_worker is not None:
             return
         num_workers = system_model.compute_slot_counts["worker"]
-        wfs = sorted(workflow_model.workflows.values(),
-                     key=lambda w: w.total_cost, reverse=True)[:num_workers]
+        wfs = sorted(
+            workflow_model.workflows.values(), key=lambda w: w.total_cost, reverse=True
+        )[:num_workers]
         self._wf_to_worker = {wf.name: i % num_workers for i, wf in enumerate(wfs)}
 
     def map(self, tasks, workflow: WorkflowModel, system: SystemModel):
         self._ensure_mapping(workflow, system)
         from collections import deque
+
         batch = []
         addresses = []
         skipped = deque()

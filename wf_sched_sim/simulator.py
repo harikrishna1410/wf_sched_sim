@@ -1,13 +1,20 @@
 import heapq
 from collections import deque
-from .workflow import WorkflowModel, WorkflowTask
-from .system import SystemModel
+
 from .mapper import Mapper
 from .orderer import TaskOrderer
+from .system import SystemModel
+from .workflow import WorkflowModel, WorkflowTask
 
 
 class Simulator:
-    def __init__(self, workflow_model: WorkflowModel, system: SystemModel, mapper: Mapper, orderer: TaskOrderer):
+    def __init__(
+        self,
+        workflow_model: WorkflowModel,
+        system: SystemModel,
+        mapper: Mapper,
+        orderer: TaskOrderer,
+    ):
         self._workflow_model = workflow_model
         self._system = system
         self._mapper = mapper
@@ -27,7 +34,9 @@ class Simulator:
             completed_count += 1
 
             self._system.deallocate([slot])
-            self._workflow_model.mark_completed({wf_name: [task.name]}, {wf_name: [current_time]})
+            self._workflow_model.mark_completed(
+                {wf_name: [task.name]}, {wf_name: [current_time]}
+            )
 
             new_ready = self._workflow_model.ready_tasks([wf_name])
             waiting = self._schedule(new_ready, waiting, event_queue, current_time)
@@ -60,10 +69,14 @@ class Simulator:
         return self._assign(waiting, event_queue, current_time)
 
     def _assign(self, waiting, event_queue, current_time):
-        allocated, unallocated = self._mapper.map(waiting, self._workflow_model, self._system)
+        allocated, unallocated = self._mapper.map(
+            waiting, self._workflow_model, self._system
+        )
         for task, slot in allocated:
             compute = self._system.get_compute(slot[0])
             task.start_time = max(task.start_time, current_time)
             completion_time = task.start_time + task.compute_cost / compute
-            heapq.heappush(event_queue, (completion_time, task.workflow.name, task, slot))
+            heapq.heappush(
+                event_queue, (completion_time, task.workflow.name, task, slot)
+            )
         return unallocated

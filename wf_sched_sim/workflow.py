@@ -101,11 +101,17 @@ class WorkflowModel:
     def done(self):
         return len(self._unfinished) == 0
 
-    def mark_completed(self, completed: dict[str, list[str]], stop_times: dict[str, list[int]]):
+    def mark_completed(
+        self, completed: dict[str, list[str]], stop_times: dict[str, list[int]]
+    ):
         for wf_name, task_names in completed.items():
-            self._workflows[wf_name].mark_completed(task_names, stop_times=stop_times[wf_name])
+            self._workflows[wf_name].mark_completed(
+                task_names, stop_times=stop_times[wf_name]
+            )
 
-    def ready_tasks(self, wf_names: list[str] | None = None) -> dict[str, list[WorkflowTask]]:
+    def ready_tasks(
+        self, wf_names: list[str] | None = None
+    ) -> dict[str, list[WorkflowTask]]:
         ret = {}
         names = wf_names if wf_names is not None else self._output_queues.keys()
         for wf_name in names:

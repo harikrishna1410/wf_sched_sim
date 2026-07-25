@@ -1,6 +1,7 @@
 import networkx as nx
-from networkx import Graph
 import numpy as np
+from networkx import Graph
+
 
 class NodeTopology:
     def __init__(self):
@@ -112,15 +113,13 @@ class SystemModel:
         if address is None:
             if np.amin(self._allocated_flag):
                 return None
-            allocated_slot_id, allocated_node, allocated_slot = (
-                np.unravel_index(
-                    np.argmin(self._allocated_flag),
-                    shape=self._allocated_flag.shape,
-                )
+            allocated_slot_id, allocated_node, allocated_slot = np.unravel_index(
+                np.argmin(self._allocated_flag),
+                shape=self._allocated_flag.shape,
             )
-            self._allocated_flag[
-                allocated_slot_id, allocated_node, allocated_slot
-            ] = True
+            self._allocated_flag[allocated_slot_id, allocated_node, allocated_slot] = (
+                True
+            )
             self._free_slots -= 1
             return (
                 self._slot_id_to_name[allocated_slot_id],
@@ -177,6 +176,7 @@ class SystemModel:
 
     def allocate(self, tasks, addresses):
         from collections import deque
+
         allocated = deque()
         unallocated = deque()
         for task, address in zip(tasks, addresses):
