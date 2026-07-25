@@ -17,3 +17,4 @@ build-backend = "hatchling.build"
 [project.scripts]
 wf-dashboard = "wf_sched_sim.examples.run_dashboard:main"
 wf-timeline = "wf_sched_sim.examples.run_timeline:main"
+wf-sim = "wf_sched_sim.examples.run_wf_sim:main"
