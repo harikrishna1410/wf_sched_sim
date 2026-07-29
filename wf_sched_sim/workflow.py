@@ -10,9 +10,13 @@ class WorkflowTask:
     compute_cost: float
     comm_size: float
     nslots: dict
+    nnodes: int = 1
     workflow: "Workflow" = None
     start_time: float = 0.0
     stop_time: float = 0.0
+
+    def __lt__(self, other):
+        return self.name < other.name
 
 
 class Workflow:
