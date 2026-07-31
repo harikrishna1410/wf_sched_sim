@@ -17,7 +17,7 @@ class TaskOrderer(ABC):
 
 class FIFOOrderer(TaskOrderer):
     def key(self, task, workflow_model, system_model):
-        return task.start_time
+        return task.ready_time
 
 
 class PipelineOrderer(TaskOrderer):

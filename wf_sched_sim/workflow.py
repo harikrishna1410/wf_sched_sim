@@ -1,5 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
+from typing import Any
 
 _DONE_SENTINAL = b"done"
 
@@ -13,7 +14,9 @@ class WorkflowTask:
     nnodes: int = 1
     workflow: "Workflow" = None
     start_time: float = 0.0
+    ready_time: float = 0.0
     stop_time: float = 0.0
+    ordering_key: Any = None
 
     def __lt__(self, other):
         return self.name < other.name
@@ -81,7 +84,7 @@ class Workflow:
             for successor in self._successors[task_name]:
                 self._dependency_counter[successor] -= 1
                 if self._dependency_counter[successor] == 0:
-                    self._tasks[successor].start_time = stop_times[task_id]
+                    self._tasks[successor].ready_time = stop_times[task_id]
                     self._output_queue.append(self._tasks[successor])
 
         if len(self._unfinished) == 0:

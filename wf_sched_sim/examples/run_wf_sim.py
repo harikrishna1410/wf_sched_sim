@@ -1,14 +1,16 @@
 import argparse
 import sys
 import time
+
 import numpy as np
+
 from wf_sched_sim.config import parse_config
-from wf_sched_sim.simulator import LargeScaleSimulator
-from wf_sched_sim.workflow import Workflow, WorkflowTask, WorkflowModel
-from wf_sched_sim.system import ComputeNode, NodeTopology, SystemModel
 from wf_sched_sim.mapper import SerialGeneralMapper
-from wf_sched_sim.wf_simulator import Simulator
 from wf_sched_sim.orderer import FIFOOrderer
+from wf_sched_sim.simulator import LargeScaleSimulator
+from wf_sched_sim.system import ComputeNode, NodeTopology, SystemModel
+from wf_sched_sim.wf_simulator import Simulator
+from wf_sched_sim.workflow import Workflow, WorkflowModel, WorkflowTask
 
 
 def generate_workloads(num_copies, lambda_val, stages, seed=42):
@@ -65,7 +67,11 @@ def main():
         description="Run the new DAG-based simulator on an existing pipeline config and compare with LargeScaleSimulator."
     )
     parser.add_argument(
-        "-c", "--config", type=str, required=True, help="Path to TOML configuration file."
+        "-c",
+        "--config",
+        type=str,
+        required=True,
+        help="Path to TOML configuration file.",
     )
     args = parser.parse_args()
 
@@ -82,7 +88,9 @@ def main():
     seed = config["seed"]
     lambda_val = config["lambda_val"]
 
-    print(f"\nSettings: {num_copies} copies, {num_workers} workers, {len(stages)} stages")
+    print(
+        f"\nSettings: {num_copies} copies, {num_workers} workers, {len(stages)} stages"
+    )
 
     durations = generate_workloads(num_copies, lambda_val, stages, seed)
 
@@ -91,12 +99,12 @@ def main():
     t0 = time.time()
     print("  Building workflow model...")
     workflow_model = build_workflow_model(stages, durations, num_copies)
-    print(f"  Built in {time.time()-t0:.2f}s")
+    print(f"  Built in {time.time() - t0:.2f}s")
 
     t1 = time.time()
     print("  Building system model...")
     system = build_system_model(num_workers)
-    print(f"  Built in {time.time()-t1:.2f}s")
+    print(f"  Built in {time.time() - t1:.2f}s")
 
     mapper = SerialGeneralMapper(name="serial_general")
     orderer = FIFOOrderer()
@@ -104,7 +112,7 @@ def main():
     print("  Running simulation...")
     t2 = time.time()
     result = sim.run()
-    print(f"  Simulation done in {time.time()-t2:.2f}s")
+    print(f"  Simulation done in {time.time() - t2:.2f}s")
     new_time = time.time() - t0
 
     print(f"  Makespan:        {result['makespan']:.2f}s")
