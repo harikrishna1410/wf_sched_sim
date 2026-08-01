@@ -1,5 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
+from typing import Any
 
 _DONE_SENTINAL = b"done"
 
@@ -10,9 +11,15 @@ class WorkflowTask:
     compute_cost: float
     comm_size: float
     nslots: dict
+    nnodes: int = 1
     workflow: "Workflow" = None
     start_time: float = 0.0
+    ready_time: float = 0.0
     stop_time: float = 0.0
+    ordering_key: Any = None
+
+    def __lt__(self, other):
+        return self.name < other.name
 
 
 class Workflow:
@@ -77,7 +84,7 @@ class Workflow:
             for successor in self._successors[task_name]:
                 self._dependency_counter[successor] -= 1
                 if self._dependency_counter[successor] == 0:
-                    self._tasks[successor].start_time = stop_times[task_id]
+                    self._tasks[successor].ready_time = stop_times[task_id]
                     self._output_queue.append(self._tasks[successor])
 
         if len(self._unfinished) == 0:
@@ -101,11 +108,17 @@ class WorkflowModel:
     def done(self):
         return len(self._unfinished) == 0
 
-    def mark_completed(self, completed: dict[str, list[str]], stop_times: dict[str, list[int]]):
+    def mark_completed(
+        self, completed: dict[str, list[str]], stop_times: dict[str, list[int]]
+    ):
         for wf_name, task_names in completed.items():
-            self._workflows[wf_name].mark_completed(task_names, stop_times=stop_times[wf_name])
+            self._workflows[wf_name].mark_completed(
+                task_names, stop_times=stop_times[wf_name]
+            )
 
-    def ready_tasks(self, wf_names: list[str] | None = None) -> dict[str, list[WorkflowTask]]:
+    def ready_tasks(
+        self, wf_names: list[str] | None = None
+    ) -> dict[str, list[WorkflowTask]]:
         ret = {}
         names = wf_names if wf_names is not None else self._output_queues.keys()
         for wf_name in names:

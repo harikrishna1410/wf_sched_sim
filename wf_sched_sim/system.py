@@ -1,6 +1,7 @@
 import networkx as nx
-from networkx import Graph
 import numpy as np
+from networkx import Graph
+
 
 class NodeTopology:
     def __init__(self):
@@ -61,6 +62,18 @@ class SystemModel:
         }
         self._free_slots = int(np.sum(~self._allocated_flag))
 
+        num_slot_types = len(compute_node.compute_slots)
+        num_nodes = self._node_topology.graph.number_of_nodes()
+        self._free_per_node = np.zeros((num_slot_types, num_nodes), dtype=np.int32)
+        self._total_free = {}
+        for sid in range(num_slot_types):
+            slot_name = self._slot_id_to_name[sid]
+            max_s = compute_node.compute_slot_counts[slot_name]
+            self._free_per_node[sid] = max_s - np.count_nonzero(
+                self._allocated_flag[sid, :, :max_s], axis=1
+            )
+            self._total_free[slot_name] = int(self._free_per_node[sid].sum())
+
     @property
     def free_slots(self):
         return self._free_slots
@@ -112,15 +125,13 @@ class SystemModel:
         if address is None:
             if np.amin(self._allocated_flag):
                 return None
-            allocated_slot_id, allocated_node, allocated_slot = (
-                np.unravel_index(
-                    np.argmin(self._allocated_flag),
-                    shape=self._allocated_flag.shape,
-                )
+            allocated_slot_id, allocated_node, allocated_slot = np.unravel_index(
+                np.argmin(self._allocated_flag),
+                shape=self._allocated_flag.shape,
             )
-            self._allocated_flag[
-                allocated_slot_id, allocated_node, allocated_slot
-            ] = True
+            self._allocated_flag[allocated_slot_id, allocated_node, allocated_slot] = (
+                True
+            )
             self._free_slots -= 1
             return (
                 self._slot_id_to_name[allocated_slot_id],
@@ -177,6 +188,7 @@ class SystemModel:
 
     def allocate(self, tasks, addresses):
         from collections import deque
+
         allocated = deque()
         unallocated = deque()
         for task, address in zip(tasks, addresses):
@@ -190,6 +202,42 @@ class SystemModel:
                 allocated.append((task, slot))
         return allocated, unallocated
 
+    def allocate_multi(self, resource_reqs: dict[str, int], nnodes: int = 1, allowed_nodes=None):
+        for slot_name, count in resource_reqs.items():
+            if self._total_free.get(slot_name, 0) < count * nnodes:
+                return None
+
+        feasible = np.ones(self._allocated_flag.shape[1], dtype=bool)
+        for slot_name, count in resource_reqs.items():
+            sid = self._slot_name_to_id[slot_name]
+            feasible &= self._free_per_node[sid] >= count
+
+        if allowed_nodes is not None:
+            mask = np.zeros(self._allocated_flag.shape[1], dtype=bool)
+            mask[allowed_nodes] = True
+            feasible &= mask
+
+        candidate_ids = np.flatnonzero(feasible)
+        if len(candidate_ids) < nnodes:
+            return None
+
+        selected_nodes = candidate_ids[:nnodes]
+        all_slots = []
+        for nid_np in selected_nodes:
+            nid = int(nid_np)
+            for slot_name, count in resource_reqs.items():
+                sid = self._slot_name_to_id[slot_name]
+                max_s = self._compute_node.compute_slot_counts[slot_name]
+                free_idx = np.flatnonzero(~self._allocated_flag[sid, nid, :max_s])
+                self._allocated_flag[sid, nid, free_idx[:count]] = True
+                self._free_per_node[sid, nid] -= count
+                self._free_slots -= count
+                self._total_free[slot_name] -= count
+                for i in range(count):
+                    all_slots.append((slot_name, nid, int(free_idx[i])))
+
+        return all_slots
+
     def deallocate(self, addresses: list[tuple[str, int, int]]):
         for address in addresses:
             slot_name = address[0]
@@ -198,6 +246,8 @@ class SystemModel:
             slot = address[2]
             if self._allocated_flag[slot_id, node_id, slot]:
                 self._allocated_flag[slot_id, node_id, slot] = False
+                self._free_per_node[slot_id, node_id] += 1
                 self._free_slots += 1
+                self._total_free[slot_name] += 1
             else:
                 raise ValueError("Can't deallocate unallocated compute slot")
