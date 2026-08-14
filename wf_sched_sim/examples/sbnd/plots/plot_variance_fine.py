@@ -159,7 +159,7 @@ def plot_stacked(rows, out, title, ms_ylim, util_ylim=(0, 105)):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--in", dest="inp", default="variance_fine_results.csv")
+    p.add_argument("--in", dest="inp", default="../data/variance_fine_results.csv")
     p.add_argument("--out-makespan", default="plot_variance_fine_makespan.png")
     p.add_argument("--out-util", default="plot_variance_fine_util.png")
     p.add_argument("--ymin-makespan", type=float, default=60.0)

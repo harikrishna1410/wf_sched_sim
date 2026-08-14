@@ -109,7 +109,7 @@ def plot(path, out):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--in", dest="inp", default="scaling_results.csv")
+    p.add_argument("--in", dest="inp", default="../data/scaling_results.csv")
     p.add_argument("--out", default="plot_scaling.png")
     args = p.parse_args()
     plot(args.inp, args.out)
