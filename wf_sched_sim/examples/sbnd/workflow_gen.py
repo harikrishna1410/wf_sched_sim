@@ -109,8 +109,8 @@ def build_system(nworkers=26112):
 
 def main(policy: Literal["pinned", "ordered"] = "pinned",
          task_distr=None,
-         pipeline_num=None,
-         suffix=""):
+         pipeline_num=104448,
+         suffix="_gen"):
     ## Build workflow
     if policy == "pinned":
         wf = build_pinned_pipeline_workflow(task_distr=task_distr,
@@ -146,7 +146,7 @@ def main(policy: Literal["pinned", "ordered"] = "pinned",
 if __name__ == "__main__":
 
     task_distr = [[36.89, 11.72**2]]
-    main(policy="pinned", task_distr=task_distr, pipeline_num=104448)
+    main(policy="pinned", task_distr=task_distr, pipeline_num=104448, suffix="_gen")
     task_distr = [[11.61,  1.91**2],
                   [26.39, 10.38**2]]
-    main(policy='ordered',task_distr=task_distr, pipeline_num=104431)
+    main(policy='ordered', task_distr=task_distr, pipeline_num=104448, suffix="_gen")

@@ -34,16 +34,22 @@ PIPELINES = 104448
 ORD_STDEVS = list(range(1, 11))          # 1,2,...,10
 PIN_STDEVS = list(range(2, 21, 2))       # 2,4,...,20
 
+# Extended sweep: ordered out to 20, pinned out to 40 (same increments).
+ORD_STDEVS_EXT = list(range(1, 21))      # 1,2,...,20
+PIN_STDEVS_EXT = list(range(2, 41, 2))   # 2,4,...,40
 
-def make_configs():
+
+def make_configs(extended=False):
     """Build (series, policy, stdev, task_distr) tuples for all four series."""
+    ord_stdevs = ORD_STDEVS_EXT if extended else ORD_STDEVS
+    pin_stdevs = PIN_STDEVS_EXT if extended else PIN_STDEVS
     cfgs = []
-    for s in ORD_STDEVS:
+    for s in ord_stdevs:
         v = s * s
         cfgs.append(("A_ord", "ordered", s, [[10, v], [10, v]]))
         cfgs.append(("B_ord", "ordered", s, [[10, 1], [10, v]]))
         cfgs.append(("D_ord", "ordered", s, [[10, v], [10, 1]]))
-    for s in PIN_STDEVS:
+    for s in pin_stdevs:
         cfgs.append(("pin", "pinned", s, [[20, s * s]]))
     return cfgs
 
@@ -95,16 +101,24 @@ def main():
     parser.add_argument("--series", type=str, default="A_ord,B_ord,D_ord,pin",
                         help="comma-separated subset of the four series")
     parser.add_argument("--freq", type=int, default=100)
-    parser.add_argument("--out", type=str, default="variance_fine_results.csv")
+    parser.add_argument("--extended", action="store_true",
+                        help="extend ordered stdev to 20 and pinned to 40")
+    parser.add_argument("--out", type=str, default=None,
+                        help="summary CSV path (default depends on --extended)")
     args = parser.parse_args()
 
+    default_out = ("variance_fine_extended_results.csv" if args.extended
+                   else "variance_fine_results.csv")
+    out_name = args.out or default_out
+    tag_prefix = "vfine_extended" if args.extended else "vfine"
+
     want = {s.strip() for s in args.series.split(",") if s.strip()}
-    out_path = os.path.join(os.getcwd(), args.out)
-    selected = [c for c in make_configs() if c[0] in want]
+    out_path = os.path.join(os.getcwd(), out_name)
+    selected = [c for c in make_configs(extended=args.extended) if c[0] in want]
     print(f"Running {len(selected)} configs -> {out_path}", flush=True)
 
     for series, policy, stdev, task_distr in selected:
-        tag = f"vfine_{series}_s{stdev}"
+        tag = f"{tag_prefix}_{series}_s{stdev}"
         result, wall = run_one(policy, task_distr, PIPELINES, NWORKERS, tag,
                                freq=args.freq)
 
